@@ -4,9 +4,11 @@ import asyncio
 from aio_pika import connect, Message
 import json
 
+from creo.session import Session
 from creo.messenger.base import MessengerBase
-from .llm.llm_client import LLMClient
-from .manager import Manager
+from creo.llm.llm_client import LLMClient
+from creo.manager import Manager
+
 
 from logging import getLogger, INFO
 logger = getLogger(__name__)
@@ -22,7 +24,7 @@ class MessageBot():
         self.rabbitmq_connection = None
         self.rabbitmq_channel = None
 
-        self.manager = Manager(self.publish_to_rabbitmq, client_cls())
+        self.manager = Manager(self.publish_to_rabbitmq, client_cls)
 
     async def setup(self):
         await self.start_rabbitmq_consumer()

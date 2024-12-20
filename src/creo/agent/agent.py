@@ -46,7 +46,7 @@ class AgentBase():
             return response
         
 
-    async def save_message(self, message, character_id=None):
+    async def save_message(self, message):
         if type(message) is str:
             try:
                 message_obj = json.loads(message)
@@ -60,14 +60,13 @@ class AgentBase():
             new_message = MessageType(
                 thread_id=self.thread_id,
                 role="user",
-                content=message,
-                character_id=character_id
+                content=message
             )
         else:
             new_message = MessageType(
                 thread_id=self.thread_id,
                 role=message_obj["role"],
-                content=message_obj["content"],
-                character_id=character_id
+                content=message_obj["content"]
             )
         self.data.messages.add_message(new_message)
+        

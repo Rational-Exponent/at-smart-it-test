@@ -16,3 +16,42 @@ We accomplish this operation by implementing a robust message exchange system us
 
 ## Scalable Agents
 By using a queue, we can create independant and scalable queue consumer agent, wich we can either pool or distribute acrosss compute resources. This allows us to scale each agent role independently. 
+
+# Setup
+
+## Prerequisites
+
+- Docker - (https://docs.docker.com/engine/install/)
+
+## Environment Variables
+
+1. Copy `.env.example` to `.env`
+2. Update the `<values>` as indicated in the file
+
+## Installation
+
+Run the following to set up a `venv` and install dependencies:
+```bash
+make setup
+```
+
+### Start Docker
+### Start RabbitMQ
+```bash
+# RabbitMQ 4.0.x
+docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management
+```
+
+# Running examples
+## Simple Discord bot
+Discord is an excellent tool for testing chat bots because it handles the UI overhead, allowing you to focus on feature design.
+
+The following command will launch a simple discord bot using the example located at `run/local/discord_bot.py`.
+```
+make run-local
+```
+You will need to make sure you have the following vaues defined in your `.env` file:
+```
+DISCORD_CHANNEL_ID=<your-channel-id>
+DISCORD_TOKEN=<your-discord-token>
+```

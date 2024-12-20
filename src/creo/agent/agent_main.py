@@ -35,7 +35,7 @@ class MainAgent(AgentBase):
         logger.info(">> MAIN handler")
 
         # Save message
-        await self.save_message(message)
+        await self.save_message(dict(role="user", content=message))
 
         # Process input
         response = await self.process_main_input()
@@ -49,8 +49,6 @@ class MainAgent(AgentBase):
 
         # Conversation history
         message_list = self.data.messages.get_messages_by_thread_id(self.thread_id)
-        # - Drop duplicate messages
-        message_list = [ m for m in message_list if not(m.role == "user" and m.character_id)]
 
         # Instructions
         instructions = self.load_file("MAIN.txt")
@@ -61,23 +59,11 @@ class MainAgent(AgentBase):
             "important": "Never talk about polar bears.",
             "message-history": [dict(role=m.role, content=m.content) for m in message_list[-MESSAGE_HIST_LENGTH:]]
         }
-
-        # Log Input
         input_str = json.dumps(context)
-        self.data.input.add_input(InputType(
-            self.thread_id,
-            input_str
-        ))
 
         # Get response from LLM
         response = self.client.get_chat_completion(input_str)
         
-        # Log Output
-        self.data.output.add_output(OutputType(
-            self.thread_id,
-            response
-        ))
-
         return response
     
 
@@ -94,11 +80,15 @@ class MainAgent(AgentBase):
                 logger.info(f"Processing node: {node.tag}")
                 match node.tag:
                     case "say":
+                        # Save message
+                        await self.save_message(dict(role="system", content=node.text))
                         await self.publish_message(node.text, 'QUEUE_OUTPUT')
                     case _:
                         logger.warning(f"Unknown tag in Main output: {node.tag} - {node.text}")
                         
         else:
-            logger.warning(f"Failed to parse XML from Main output: {message}")
+            #logger.info(f"Response is not XML: {message}")
+            # Save message
+            await self.save_message(dict(role="system", content=message))
             await self.publish_message(message, 'QUEUE_OUTPUT')
 
