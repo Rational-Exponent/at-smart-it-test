@@ -1,15 +1,16 @@
 import json
 
-from .agent import AgentBase
-from ..llm.llm_client import LLMClient
-from ..vision import VisionClientBase
-from ..data import DataModel
-from ..data.types import (
+from creo.agent.agent import AgentBase
+from creo.llm.llm_client import LLMClient
+from creo.data import DataModel
+from creo.data.types import (
     OutputType,
     InputType,
 )
-from ..xml import XMLParser, XMLNode
+from creo.xml import XMLParser, XMLNode
+from creo.session import Session
 
+import os
 
 import logging
 logger = logging.getLogger(__name__)
@@ -19,13 +20,15 @@ MESSAGE_HIST_LENGTH = 20
 class MainAgent(AgentBase):
     publish_message: callable
 
-    def __init__(self, data_model: DataModel, thread_id:int, publish_message_function: callable, llm_client: LLMClient):
-        super().__init__(data_model, thread_id, publish_message_function, llm_client)
-        
+    def __init__(self, session: Session, data: DataModel, publish_message_function: callable, client: LLMClient, user_output_queue):
+        super().__init__(session, data, publish_message_function, client)
+        self.user_output_queue = user_output_queue
 
     async def handle_user_message(self, input_message):
-        await self.handle_main(input_message)
+         # Save message
+        await self.save_message(dict(role="user", content=input_message))
 
+        await self.handle_main(input_message)
 
     async def handle_main(self, message):
         """
@@ -34,24 +37,21 @@ class MainAgent(AgentBase):
         """
         logger.info(">> MAIN handler")
 
-        # Save message
-        await self.save_message(dict(role="user", content=message))
-
         # Process input
         response = await self.process_main_input()
         
         # Process response
         await self.process_main_output(response)
 
-
     async def process_main_input(self):
         # Compose LLM context
 
         # Conversation history
-        message_list = self.data.messages.get_messages_by_thread_id(self.thread_id)
+        message_list = self.data.messages.get_messages_by_thread_id(self.session.thread_id)
 
         # Instructions
-        instructions = self.load_file("MAIN.txt")
+        path = os.path.join(os.path.dirname(__file__), "config", "MAIN.txt")
+        instructions = self.load_file(path)
 
         # Compose context
         context = {
@@ -65,7 +65,6 @@ class MainAgent(AgentBase):
         response = self.client.get_chat_completion(input_str)
         
         return response
-    
 
     async def process_main_output(self, message):
         """
@@ -82,7 +81,7 @@ class MainAgent(AgentBase):
                     case "say":
                         # Save message
                         await self.save_message(dict(role="system", content=node.text))
-                        await self.publish_message(node.text, 'QUEUE_OUTPUT')
+                        await self.publish_message(node.text, self.user_output_queue)
                     case _:
                         logger.warning(f"Unknown tag in Main output: {node.tag} - {node.text}")
                         
@@ -90,5 +89,4 @@ class MainAgent(AgentBase):
             #logger.info(f"Response is not XML: {message}")
             # Save message
             await self.save_message(dict(role="system", content=message))
-            await self.publish_message(message, 'QUEUE_OUTPUT')
-
+            await self.publish_message(message, self.user_output_queue)

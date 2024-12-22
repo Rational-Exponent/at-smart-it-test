@@ -16,6 +16,6 @@ code:
 	source .venv/bin/activate && code .
 
 run-local:
-	sh .venv/bin/activate && python3 run/local/discord_bot.py
+	sh .venv/bin/activate && python3 run/local/discord_app.py
 
 run: run-local

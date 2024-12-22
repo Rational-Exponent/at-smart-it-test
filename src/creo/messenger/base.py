@@ -17,5 +17,9 @@ class MessengerBase(ABC):
         pass
 
     @abstractmethod
+    async def send_user_message(self, message):
+        pass
+
+    @abstractmethod
     def run(self):
         pass

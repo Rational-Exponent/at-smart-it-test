@@ -9,22 +9,25 @@ from creo.messenger.base import MessengerBase
 from creo.llm.llm_client import LLMClient
 from creo.manager import Manager
 
-
 from logging import getLogger, INFO
 logger = getLogger(__name__)
 logger.setLevel(INFO)
 
 dotenv.load_dotenv('.env')
 
+
+QUEUE_USER_INPUT = 'QUEUE_USER_INPUT'
+
 class MessageBot():
-    def __init__(self, messenger_cls: MessengerBase, client_cls: LLMClient):
-        self.messenger = messenger_cls(self.receive_user_message)
+    def __init__(self, consumers: dict, user_input_queue=QUEUE_USER_INPUT):
+        self.consumers = consumers  # Store the consumers
+        self.user_input_queue = user_input_queue
 
         self.loop = asyncio.get_event_loop()
         self.rabbitmq_connection = None
         self.rabbitmq_channel = None
 
-        self.manager = Manager(self.publish_to_rabbitmq, client_cls)
+        #self.manager = Manager(self.publish_to_rabbitmq, client_cls)
 
     async def setup(self):
         await self.start_rabbitmq_consumer()
@@ -33,18 +36,14 @@ class MessageBot():
         self.rabbitmq_connection = await connect(host=os.getenv('RABBITMQ_HOST'))
         self.rabbitmq_channel = await self.rabbitmq_connection.channel()
 
-        queue_list=[
-            'QUEUE_OUTPUT',
-            'QUEUE_INPUT',
-            'MAIN_INPUT',
-        ]
-        async def consume_queue(queue_name):
+        # Iterate over the consumer map to set up consumers for each queue
+        async def consume_queue(queue_name, consumer):
             queue = await self.rabbitmq_channel.declare_queue(queue_name, durable=True)
             await queue.purge()
-            await queue.consume(self.on_rabbitmq_message)
+            await queue.consume(lambda message: self.on_rabbitmq_message(message, consumer))
 
-        # Create a list of tasks to run for each queue
-        tasks = [consume_queue(queue_name) for queue_name in queue_list]
+        # Create a list of tasks to run for each queue-consumer pair
+        tasks = [consume_queue(queue_name, consumer) for queue_name, consumer in self.consumers.items()]
         
         # Gather all the consumer tasks to run them concurrently
         await asyncio.gather(*tasks)
@@ -59,29 +58,15 @@ class MessageBot():
         )
         print(f"Message sent to RabbitMQ: [{routing_key}]: {message_content}")
 
-    async def on_rabbitmq_message(self, message):
+    async def on_rabbitmq_message(self, message, consumer):
         print(f"Message received from RabbitMQ: [{message.routing_key}]:\n{message.body.decode()}")
-        # TODO: Can we move all of this logic to the Manager?
         async with message.process():
-            # route message based on routing_key
-            match message.routing_key:
-                case 'QUEUE_OUTPUT':
-                    # Message for output to user
-                    await self.messenger.send_user_message(message.body.decode())
-                case 'QUEUE_INPUT':
-                    # Message from the user to the bot
-                    await self.manager.handle_user_message(message.body.decode())
-                case 'MAIN_INPUT':
-                    # Input to Main handler
-                    await self.manager.handle_main(message.body.decode())
-                
+            # Use the consumer to process the message
+            await consumer(message.body.decode())
+
     async def receive_user_message(self, message: str):
-        if message.startswith('!'):
-            await self.manager.handle_command(message)
-        else:
-            await self.publish_to_rabbitmq(message, 'QUEUE_INPUT')
+        await self.publish_to_rabbitmq(message, self.user_input_queue)
 
     def run(self):
         # Run the bot
         asyncio.run(self.setup())
-        self.messenger.run()
