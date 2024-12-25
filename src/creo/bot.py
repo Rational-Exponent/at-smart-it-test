@@ -48,10 +48,13 @@ class MessageBot():
         # Gather all the consumer tasks to run them concurrently
         await asyncio.gather(*tasks)
 
-    async def publish_to_rabbitmq(self, message_content, routing_key):
+    async def publish_to_rabbitmq(self, routing_key: str, message_content: str, ):
         if not self.rabbitmq_channel or self.rabbitmq_channel.is_closed:
             await self.setup()
-
+        if type(message_content) is dict:
+            message_content = json.dumps(message_content)
+        elif type(message_content) is not str:
+            message_content = str(message_content)
         message = Message(message_content.encode())
         await self.rabbitmq_channel.default_exchange.publish(
             message, routing_key=routing_key
@@ -62,10 +65,10 @@ class MessageBot():
         print(f"Message received from RabbitMQ: [{message.routing_key}]:\n{message.body.decode()}")
         async with message.process():
             # Use the consumer to process the message
-            await consumer(message.body.decode())
+            await consumer(message.routing_key, message.body.decode())
 
     async def receive_user_message(self, message: str):
-        await self.publish_to_rabbitmq(message, self.user_input_queue)
+        await self.publish_to_rabbitmq(self.user_input_queue, message)
 
     def run(self):
         # Run the bot

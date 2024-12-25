@@ -11,3 +11,12 @@ class Session():
     @staticmethod
     def new_session():
         return Session(str(uuid.uuid4()), str(uuid.uuid4()))
+    
+    def new_thread(self):
+        return Session(self.session_id, str(uuid.uuid4()))
+    
+    def to_dict(self):
+        return {
+            "session_id": self.session_id,
+            "thread_id": self.thread_id
+        }
