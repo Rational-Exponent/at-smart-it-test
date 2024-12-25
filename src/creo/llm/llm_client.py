@@ -33,7 +33,8 @@ class LLMClient(ABC):
                         input_str = input_message
 
                     self.data.input.add_input(InputType(
-                        self.session.thread_id or 0,
+                        self.session.session_id,
+                        self.session.thread_id,
                         input_str
                     ))
 
@@ -42,7 +43,8 @@ class LLMClient(ABC):
                 if self.data is not None:
                     # Log Output
                     self.data.output.add_output(OutputType(
-                        self.session.thread_id or 0,
+                        self.session.session_id,
+                        self.session.thread_id,
                         response
                     ))
                 

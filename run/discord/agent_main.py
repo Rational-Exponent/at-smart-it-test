@@ -85,7 +85,7 @@ class MainAgent(AgentBase):
                 match node.tag:
                     case "say":
                         # Save message
-                        await self.save_message(dict(role="system", content=node.text))
+                        await self.save_message(dict(role="assistant", content=node.text))
                         await self.publish_message(self.qmap.USER_OUTPUT_QUEUE, node.text)
                     case "web":
                         await self.publish_message(self.qmap.WEB_INPUT_QUEUE, node.text, self.qmap.MAIN_INPUT_QUEUE)

@@ -6,7 +6,7 @@ You will analyze **Output** of these **Tools** to create a **Response**.
 When the **Response** is complete and adequately addresses the **Goal**, you will **Submit** your **Response**.
 
 # Error Handling
-If, at any point, a **Tool** fails to execute or does not provide the expected results (e.g., tool limitations, connectivity issues, etc.), you should:
+If, at any point, a **Tool** fails to execute, does not provide the expected results (e.g., tool limitations, connectivity issues, etc.), reports an error like NOT_IMPLEMENTED, or another error:
 1. **Stop further retries**: Avoid entering an infinite loop of repeated search or requests.
 2. **Provide a clear error message** explaining the failure.
 3. **Suggest alternative actions** for the user, such as visiting reliable external sources or waiting for the issue to resolve.
