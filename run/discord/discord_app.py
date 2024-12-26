@@ -60,8 +60,8 @@ class DiscordBotApp():
             self.qmap.MAIN_INPUT_QUEUE: self.main_agent.handle_main,
             self.qmap.WEB_INPUT_QUEUE: self.web_agent.handle_main,
             self.qmap.WEB_CALLBACK_QUEUE: self.web_agent.handle_callback,
-            self.qmap.SEARCH_INPUT_QUEUE: self.mock_handler,
-            self.qmap.REQUEST_INPUT_QUEUE: self.mock_handler,
+            self.qmap.SEARCH_INPUT_QUEUE: self.web_agent.handle_web_search,
+            self.qmap.REQUEST_INPUT_QUEUE: self.web_agent.handle_web_request,
         }
         self.bot = MessageBot(self.queue_consumer_map, user_input_queue=self.qmap.USER_INPUT_QUEUE)
 

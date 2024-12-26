@@ -16,14 +16,16 @@ class AgentBase():
     llm_client : LLMClient
     data: DataModel
     session: Session
+    agent_queue: str = None
     reply_queue: str = None
 
-    def __init__(self, session: Session, data_model: DataModel, publish_message_function: callable, llm_client: LLMClient, reply_queue: str):
+    def __init__(self, session: Session, data_model: DataModel, publish_message_function: callable, llm_client: LLMClient, agent_queue: str):
         self.session = session
         self.data = data_model
         self.publish_to_queue = publish_message_function
         self.client = llm_client
-        self.reply_queue = reply_queue
+        self.agent_queue = agent_queue
+        self.reply_queue = None
         
     @staticmethod
     def load_file(filename):
