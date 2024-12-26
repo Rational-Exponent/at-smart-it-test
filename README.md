@@ -17,6 +17,16 @@ We accomplish this operation by implementing a robust message exchange system us
 ## Scalable Agents
 By using a queue, we can create independant and scalable queue consumer agent, wich we can either pool or distribute acrosss compute resources. This allows us to scale each agent role independently. 
 
+# Tech Stack
+
+- Docker
+- RabbitMQ
+- MongoDB
+- OpenAI (swapable service provider)
+### (Optional)
+- Discord - used in example `run\discord`
+
+
 # Setup
 
 ## Prerequisites
@@ -36,10 +46,19 @@ make setup
 ```
 
 ### Start Docker
+
+Follow instructions for your OS to start the Docker app
+
 ### Start RabbitMQ
 ```bash
 # RabbitMQ 4.0.x
 docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management
+```
+
+### Start MongoDB
+```bash
+export MONGODB_VERSION=6.0-ubi8
+docker run --name mongodb -d mongodb/mongodb-community-server:$MONGODB_VERSION
 ```
 
 # Running examples

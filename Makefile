@@ -12,6 +12,14 @@ setup-install:
 
 setup: setup-env setup-install
 
+start-mongo:
+	@echo "Starting MongoDB..."
+	docker run --name mongodb -d mongodb/mongodb-community-server:6.0-ubi8
+
+start-rabbitmq:
+	@echo "Starting RabbitMQ..."
+	docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management
+
 code:
 	source .venv/bin/activate && code .
 
