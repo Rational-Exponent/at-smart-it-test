@@ -40,6 +40,7 @@ class DiscordBotApp():
         self.session = Session.new_session()
         self.messenger = DiscordMessenger(self.receive_user_message)
         self.data = DataModel()
+        # TODO: Move to agent factory
         self.main_agent = MainAgent(
             session = self.session,
             data = self.data,
@@ -58,6 +59,7 @@ class DiscordBotApp():
             self.qmap.USER_OUTPUT_QUEUE: self.send_user_message,
             self.qmap.USER_INPUT_QUEUE: self.main_agent.handle_user_message,
             self.qmap.MAIN_INPUT_QUEUE: self.main_agent.handle_main,
+            self.qmap.NOTES_QUEUE: self.main_agent.handle_notes,
             self.qmap.WEB_INPUT_QUEUE: self.web_agent.handle_main,
             self.qmap.WEB_CALLBACK_QUEUE: self.web_agent.handle_callback,
             self.qmap.SEARCH_INPUT_QUEUE: self.web_agent.handle_web_search,
@@ -85,7 +87,7 @@ class DiscordBotApp():
             "content": "NOT IMPLEMENTED"
         }
         
-        await self.bot.publish_to_rabbitmq(message_obj.get("reply_queue"), response )    
+        await self.bot.publish_to_rabbitmq(message_obj.get("reply_queue"), response)
 
     async def receive_user_message(self, message: str):
         await self.bot.publish_to_rabbitmq(self.qmap.USER_INPUT_QUEUE, message)
@@ -99,10 +101,16 @@ class DiscordBotApp():
             logger.error(f"ERROR: (APP) - send_user_message - Could not decode message envelope: {message}")
             raise e
 
-    async def publish_message(self, queue_name: str, message: str):
+    async def publish_message(self, to_queue: str, message: str):
         # NOTE: We need to ue this App method in the queue map instead of the bot method directly.
         # This is because the bot instance does not exist when the agents and queue map is created.
-        await self.bot.publish_to_rabbitmq(queue_name, message)
+        if not to_queue:
+            logger.error(f"ERROR: (APP) - publish_message - No destination queue specified: {to_queue}/{message}")
+            return
+        if not message:
+            logger.error(f"ERROR: (APP) - publish_message - No message content specified: {to_queue}/{message}")
+            return
+        await self.bot.publish_to_rabbitmq(to_queue, message)
 
 
     def run(self):

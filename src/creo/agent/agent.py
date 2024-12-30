@@ -18,6 +18,7 @@ class AgentBase():
     session: Session
     agent_queue: str = None
     reply_queue: str = None
+    envelope: dict = None
 
     def __init__(self, session: Session, data_model: DataModel, publish_message_function: callable, llm_client: LLMClient, agent_queue: str):
         self.session = session
@@ -25,7 +26,7 @@ class AgentBase():
         self.publish_to_queue = publish_message_function
         self.client = llm_client
         self.agent_queue = agent_queue
-        self.reply_queue = None
+        self.reply_queue = agent_queue
         
     @staticmethod
     def load_file(filename):
@@ -48,10 +49,11 @@ class AgentBase():
         except json.JSONDecodeError:
             return response
         
-    def pack_message(self, content: str, reply_queue: str = None):
+    def pack_message(self, content: str, to_queue: str, from_queue: str = None):
         return {
             "from_session": self.session.to_dict(),
-            "reply_queue": reply_queue or self.reply_queue,
+            "from_queue": from_queue or self.reply_queue,
+            "to_queue": to_queue,
             "content": content
         }
     
@@ -63,17 +65,16 @@ class AgentBase():
             else:
                 message_obj = json.loads(message)
 
-            # Extract header details
-            self.session = Session(
-                message_obj["from_session"]["session_id"], 
-                message_obj["from_session"]["thread_id"]
-            )
-            self.reply_queue = message_obj["reply_queue"]
+            # # Extract header details
+            # self.session = Session(
+            #     message_obj["from_session"]["session_id"], 
+            #     message_obj["from_session"]["thread_id"]
+            # )
 
             # Extract message content
-            message = message_obj["content"]
+            # message = message_obj["content"]
 
-            return message
+            return message_obj["content"]
 
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"ERROR ({type(e)}): [{queue_name}] - Could not decode message envelope:  {message}")
@@ -88,39 +89,34 @@ class AgentBase():
             return await method(self, unpacked_message, *args, **kwargs)
         return wrapper
     
-    async def publish_message(self, queue_name: str, message: str, reply_queue: str = None):
+    async def publish_message(self, message: str, to_queue: str, from_queue: str = None):
         """
         Wraps a message in an envelope and publishes it to a queue
         """
-        message_obj = self.pack_message(message, reply_queue)
-        await self.publish_to_queue(queue_name, json.dumps(message_obj)) 
+        message_obj = self.pack_message(message, to_queue, from_queue)
+        await self.publish_to_queue(to_queue, json.dumps(message_obj))
 
     async def save_message(self, message):
-        if type(message) is str:
+        if isinstance(message, str):
             try:
                 message_obj = json.loads(message)
             except json.JSONDecodeError:
                 message_obj = dict(role="system", content=message)
-        elif type(message) is dict:
+        elif isinstance(message, dict):
             message_obj = message
         else:
-            message_obj = dict(role="system", content=json.dumps(message))
+            try:
+                message_obj = dict(role="system", content=json.dumps(message))
+            except json.JSONDecodeError:
+                message_obj = dict(role="system", content=str(message))
 
         # Store new message
-        if message_obj is None or type(message_obj) is str:
-            new_message = MessageType(
-                session_id=self.session.session_id,
-                thread_id=self.session.thread_id,
-                role="user",
-                content=message
-            )
-        else:
-            new_message = MessageType(
-                session_id=self.session.session_id,
-                thread_id=self.session.thread_id,
-                role=message_obj["role"],
-                content=message_obj["content"]
-            )
+        new_message = MessageType(
+            session_id=self.session.session_id,
+            thread_id=self.session.thread_id,
+            role=message_obj["role"],
+            content=message_obj["content"]
+        )
         self.data.messages.add_message(new_message)
         
 

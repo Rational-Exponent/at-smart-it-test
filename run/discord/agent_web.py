@@ -27,6 +27,8 @@ class WebAgent(AgentBase):
     def __init__(self, session: Session, data: DataModel, publish_message_function: callable, client: LLMClient, queue_map: QueueMap):
         super().__init__(session, data, publish_message_function, client, queue_map.WEB_CALLBACK_QUEUE)
         self.qmap = queue_map
+        self.goal = None
+        self.reply_queue = queue_map.WEB_CALLBACK_QUEUE
 
     @AgentBase.with_unpacking
     async def handle_main(self, message: str):
@@ -38,6 +40,7 @@ class WebAgent(AgentBase):
 
         # Start a new message thread
         self.session = self.session.new_thread()
+        self.goal = message
 
         # Save new message to state
         await self.save_message(dict(role="user", content=message))
@@ -77,6 +80,7 @@ class WebAgent(AgentBase):
         # Compose context
         context = {
             "instructions": instructions,
+            "goal": self.goal,
             "message-history": [dict(role=m.role, content=m.content) for m in message_list[-MESSAGE_HIST_LENGTH:]]
         }
         input_str = json.dumps(context)
@@ -103,17 +107,17 @@ class WebAgent(AgentBase):
                 match node.tag:
                     case "submit":
                         node_text = f"# RESULTS OF YOUR QUERY \n\n{node.text}"
-                        await self.publish_message(self.qmap.MAIN_INPUT_QUEUE, node_text)
+                        await self.publish_message(node_text, self.qmap.MAIN_INPUT_QUEUE)
                     case "search":
-                        await self.publish_message(self.qmap.USER_OUTPUT_QUEUE, f"tool[web search]: {node.text}")
-                        await self.publish_message(self.qmap.SEARCH_INPUT_QUEUE, node.text, self.qmap.WEB_CALLBACK_QUEUE)
+                        await self.publish_message(f"tool[web search]: {node.text}", self.qmap.USER_OUTPUT_QUEUE)
+                        await self.publish_message(node.text, self.qmap.SEARCH_INPUT_QUEUE, self.qmap.WEB_CALLBACK_QUEUE)
                     case "request":
-                        await self.publish_message(self.qmap.USER_OUTPUT_QUEUE, f"tool[web request]: {node.text}")
-                        await self.publish_message(self.qmap.REQUEST_INPUT_QUEUE, node.text, self.qmap.WEB_CALLBACK_QUEUE)
+                        await self.publish_message(f"tool[web request]: {node.text}", self.qmap.USER_OUTPUT_QUEUE)
+                        await self.publish_message(node.text, self.qmap.REQUEST_INPUT_QUEUE, self.qmap.WEB_CALLBACK_QUEUE)
                     case "notes":
                         node_text = f"# RESEARCH NOTES \n\n{node.text}"
-                        await self.publish_message(self.qmap.USER_OUTPUT_QUEUE, f"tool[web notes] <agent is taking notes>")
-                        await self.publish_message(self.qmap.WEB_INPUT_QUEUE, node_text, self.qmap.WEB_CALLBACK_QUEUE)
+                        await self.publish_message(f"tool[web notes] <agent is taking notes>", self.qmap.USER_OUTPUT_QUEUE)
+                        await self.publish_message(node_text, self.qmap.WEB_INPUT_QUEUE, self.qmap.WEB_CALLBACK_QUEUE)
                     case _:
                         logger.warning(f"Unknown tag in Main output: {node.tag} - {node.text}")
                         
@@ -121,7 +125,7 @@ class WebAgent(AgentBase):
             #logger.info(f"Response is not XML: {message}")
             # Save message
             await self.save_message(dict(role="system", content=message))
-            await self.publish_message(self.qmap.USER_OUTPUT_QUEUE, message)
+            await self.publish_message(message, self.qmap.USER_OUTPUT_QUEUE)
 
 
     @AgentBase.with_unpacking
@@ -140,7 +144,7 @@ class WebAgent(AgentBase):
         }
         reply = json.dumps(response_data)
         
-        await self.publish_message(self.reply_queue, reply)
+        await self.publish_message(reply, self.reply_queue)
 
 
     @AgentBase.with_unpacking
@@ -169,7 +173,7 @@ class WebAgent(AgentBase):
         response_data = await make_web_request(url, method, body, headers)
         reply = json.dumps(response_data)
 
-        await self.publish_message(self.reply_queue, reply)
+        await self.publish_message(reply, self.reply_queue)
 
 
 
