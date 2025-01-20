@@ -34,3 +34,5 @@ async def test_make_web_request(test_data):
     assert response["url"] == test_data["url"]
     assert response["method"] == test_data["method"]
     assert isinstance(response["result"], list)
+
+

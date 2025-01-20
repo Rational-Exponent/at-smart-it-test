@@ -1,4 +1,5 @@
 import uuid
+import json
 
 class Session():
     session_id: str
@@ -20,3 +21,12 @@ class Session():
             "session_id": self.session_id,
             "thread_id": self.thread_id
         }
+    
+    def from_dict(data: dict) -> 'Session':
+        return Session(
+            session_id=data.get('session_id'),
+            thread_id=data.get('thread_id')
+        )
+    
+    def __repr__(self):
+        return json.dumps(self.to_dict())

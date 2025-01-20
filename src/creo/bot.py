@@ -59,10 +59,10 @@ class MessageBot():
         await self.rabbitmq_channel.default_exchange.publish(
             message, routing_key=routing_key
         )
-        print(f"Message sent to RabbitMQ: [{routing_key}]: {message_content}")
+        print(f"SENT to RabbitMQ: [{routing_key}]: {message_content}\n\n")
 
     async def on_rabbitmq_message(self, message, consumer):
-        print(f"Message received from RabbitMQ: [{message.routing_key}]:\n{message.body.decode()}")
+        print(f"RECEIVED from RabbitMQ: [{message.routing_key}]:\n{message.body.decode()}\n\n")
         async with message.process():
             # Use the consumer to process the message
             await consumer(message.routing_key, message.body.decode())

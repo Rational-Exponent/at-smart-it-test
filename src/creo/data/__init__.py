@@ -1,15 +1,12 @@
-from .mongodb_connection import get_mongo_client
-
-from .output import OutputModel
-from .input import InputModel
-from .messages import MessageModel
-from .notes import NoteModel
+from .models.output import OutputModel, OutputType
+from .models.input import InputModel, InputType
+from .models.messages import MessageModel, MessageType
+from .models.notes import NoteModel, NoteType
+from .database_factory import DatabaseFactory
 
 class DataModel():
-    def __init__(self):
-        # Establish a connection to MongoDB
-        db = get_mongo_client()
-        self.output = OutputModel(db)
-        self.input = InputModel(db)
-        self.messages = MessageModel(db)
-        self.notes = NoteModel(db)
+    def __init__(self, db_factory: DatabaseFactory):
+        self.output = OutputModel(db=db_factory.create_database(OutputType))
+        self.input = InputModel(db=db_factory.create_database(InputType))
+        self.messages = MessageModel(db=db_factory.create_database(MessageType))
+        self.notes = NoteModel(db=db_factory.create_database(NoteType))

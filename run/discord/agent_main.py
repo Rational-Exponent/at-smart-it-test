@@ -4,11 +4,9 @@ from creo.agent.agent import AgentBase
 from creo.llm.llm_client import LLMClient
 from creo.data import DataModel
 from creo.data.types import (
-    OutputType,
-    InputType,
     NoteType,
 )
-from creo.xml import XMLParser, XMLNode
+from creo.xml import XMLParser
 from creo.session import Session
 
 from queue_map import QueueMap
@@ -21,6 +19,7 @@ logger = logging.getLogger(__name__)
 MESSAGE_HIST_LENGTH = 20
 
 class MainAgent(AgentBase):
+    data: DataModel
 
     def __init__(self, session: Session, data: DataModel, publish_message_function: callable, client: LLMClient, queue_map: QueueMap):
         super().__init__(session, data, publish_message_function, client, queue_map.MAIN_INPUT_QUEUE)
@@ -53,14 +52,14 @@ class MainAgent(AgentBase):
         # Compose LLM context
 
         # Conversation history
-        message_list = self.data.messages.get_messages_by_session(self.session)
+        message_list = self.data.messages.get_items_by_session(self.session)
 
         # Instructions
         path = os.path.join(os.path.dirname(__file__), "config", "MAIN.txt")
         instructions = self.load_file(path)
 
         # Notes
-        notes = self.data.notes.get_notes_by_session(self.session)
+        notes = self.data.notes.get_items_by_session(self.session)
 
         # Compose context
         context = {
@@ -120,13 +119,12 @@ class MainAgent(AgentBase):
         message_obj = json.loads(message)
 
         if delete_id := message_obj.get("delete_id"):
-            self.data.notes.delete_note(delete_id)
+            self.data.notes.delete_item(self.session, delete_id)
             await self.publish_message(f"tool[agent notes] <Note deleted: {delete_id}>", self.qmap.USER_OUTPUT_QUEUE)
             await self.publish_message(f"tool[agent notes] <Note deleted: {delete_id}>", self.qmap.MAIN_INPUT_QUEUE)
         else:
-            note_id = self.data.notes.add_note(NoteType(
-                session_id=self.session.session_id,
-                thread_id=self.session.thread_id,
+            note_id = self.data.notes.add_item(NoteType(
+                session=self.session,
                 content=message_obj["content"]
             ))
             await self.publish_message(f"tool[agent notes] <Note added: {note_id}>", self.qmap.USER_OUTPUT_QUEUE)

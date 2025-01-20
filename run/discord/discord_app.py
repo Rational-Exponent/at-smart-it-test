@@ -11,6 +11,7 @@ from creo.messenger.discord import DiscordMessenger
 from creo.llm.llm_openai import LLMClientOpenAI as LLMClient
 from creo.session import Session
 from creo.data import DataModel
+from creo.data.mongodb_connection import generate_database
 
 from agent_main import MainAgent
 from agent_web import WebAgent
@@ -39,7 +40,7 @@ class DiscordBotApp():
     def __init__(self):
         self.session = Session.new_session()
         self.messenger = DiscordMessenger(self.receive_user_message)
-        self.data = DataModel()
+        self.data = generate_database()
         # TODO: Move to agent factory
         self.main_agent = MainAgent(
             session = self.session,

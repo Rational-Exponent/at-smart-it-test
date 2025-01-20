@@ -112,12 +112,11 @@ class AgentBase():
 
         # Store new message
         new_message = MessageType(
-            session_id=self.session.session_id,
-            thread_id=self.session.thread_id,
+            session=self.session,
             role=message_obj["role"],
             content=message_obj["content"]
         )
-        self.data.messages.add_message(new_message)
+        self.data.messages.add_item(new_message)
         
 
     async def handle_user_message(self, input_message):

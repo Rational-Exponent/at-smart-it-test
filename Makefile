@@ -39,7 +39,7 @@ start-all: start-mongo start-rabbitmq
 code:
 	source .venv/bin/activate && code .
 
-run-local:
+run-local-discord:
 	sh .venv/bin/activate && python3 run/discord/discord_app.py
 
 run: run-local

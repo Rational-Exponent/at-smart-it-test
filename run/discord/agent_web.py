@@ -71,7 +71,7 @@ class WebAgent(AgentBase):
         # Compose LLM context
 
         # Conversation history
-        message_list = self.data.messages.get_messages_by_session(self.session)
+        message_list = self.data.messages.get_items_by_session(self.session)
 
         # Instructions
         path = os.path.join(os.path.dirname(__file__), "config", "WEB.txt")
@@ -170,7 +170,7 @@ class WebAgent(AgentBase):
         body = message_obj.get("body", None)
         headers = message_obj.get("headers", None)
 
-        response_data = await make_web_request(url, method, body, headers)
+        response_data = await make_web_request(url, method, body or "", headers)
         reply = json.dumps(response_data)
 
         await self.publish_message(reply, self.reply_queue)

@@ -1,7 +1,7 @@
-from .input import InputType
-from .output import OutputType
-from .messages import MessageType
-from .notes import NoteType
+from .models.input import InputType
+from .models.output import OutputType
+from .models.messages import MessageType
+from .models.notes import NoteType
 
 # export all types
 __all__ = [
