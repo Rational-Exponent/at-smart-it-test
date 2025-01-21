@@ -29,11 +29,22 @@ start-mongo:
 	fi
 
 
-
 start-rabbitmq:
 	@echo "Starting RabbitMQ..."
-	docker run -it --rm --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management
-
+	@container_id=$(shell docker ps -aq -f name=rabbitmq); \
+	echo "Container ID: $$container_id"; \
+	if [ ! -z "$$container_id" ]; then \
+		if [ $(shell docker ps -q -f name=rabbitmq) ]; then \
+			echo "RabbitMQ container is already running."; \
+		else \
+			echo "RabbitMQ container exists but is stopped, starting..."; \
+			docker start rabbitmq; \
+		fi \
+	else \
+		echo "RabbitMQ container does not exist, creating new one..."; \
+		docker run -it --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management; \
+	fi
+	
 start-all: start-mongo start-rabbitmq
 
 code:

@@ -23,7 +23,7 @@ class MessageBot():
         self.consumers = consumers  # Store the consumers
         self.user_input_queue = user_input_queue
 
-        self.loop = asyncio.get_event_loop()
+        # self.loop = asyncio.get_event_loop()
         self.rabbitmq_connection = None
         self.rabbitmq_channel = None
 
@@ -56,14 +56,21 @@ class MessageBot():
         elif type(message_content) is not str:
             message_content = str(message_content)
         message = Message(message_content.encode())
-        await self.rabbitmq_channel.default_exchange.publish(
-            message, routing_key=routing_key
-        )
-        print(f"SENT to RabbitMQ: [{routing_key}]: {message_content}\n\n")
+        
+        print(f"\n\n>> bot.publish_to_rabbitmq[{routing_key}] {message_content}")
+        try:
+            await self.rabbitmq_channel.default_exchange.publish(
+                message, routing_key=routing_key
+            )
+        except Exception as e:
+            print(f">> ERROR: {e}")
+        else:
+            print(f"SENT to RabbitMQ: [{routing_key}]: {message_content}\n\n")
 
     async def on_rabbitmq_message(self, message, consumer):
         print(f"RECEIVED from RabbitMQ: [{message.routing_key}]:\n{message.body.decode()}\n\n")
         async with message.process():
+            print(f"handing to process... {consumer}")
             # Use the consumer to process the message
             await consumer(message.routing_key, message.body.decode())
 

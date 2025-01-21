@@ -93,6 +93,7 @@ class AgentBase():
         """
         Wraps a message in an envelope and publishes it to a queue
         """
+        print("\n\n>> publish_message")
         message_obj = self.pack_message(message, to_queue, from_queue)
         await self.publish_to_queue(to_queue, json.dumps(message_obj))
 
