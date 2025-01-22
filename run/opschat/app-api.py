@@ -1,7 +1,7 @@
 import asyncio
 import json
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import uvicorn
 
@@ -31,14 +31,23 @@ async def send_message(message: dict):
 
 @app.get("/messages")
 async def get_messages():
-    """
-    Returns unread messages
-    """
-    async def message_generator():
-        async for message in handler.get_messages_for_user():
-            yield json.dumps({"messages": message}) + "\n"
+    try:
+        # Try to get a message, but don't block forever
+        message = None
+        for _ in range(30):  # Poll for up to 30 seconds
+            message = await handler.get_messages_for_user()
+            if message:
+                return JSONResponse({"messages": message})
+            # Small sleep to prevent tight loop
+            await asyncio.sleep(0.1)
+        
+        # If no message after polling, return empty
+        return JSONResponse({"messages": None})
             
-    return StreamingResponse(message_generator(), media_type="application/json")
+    except Exception as e:
+        print(f"Error reading from queue: {e}")
+        return JSONResponse({"messages": None})
+
 
 
 if __name__ == "__main__":

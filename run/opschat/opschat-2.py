@@ -18,7 +18,6 @@ class StreamlitApp:
         query = st.text_input("What is your query?")
         if query:
             try:
-                # Send message to API
                 response = requests.post(
                     f"{self.api_url}/message", 
                     json={"content": query}
@@ -36,20 +35,25 @@ class StreamlitApp:
                 prefix = "🧑 You: " if role == "user" else "🤖 Bot: "
                 st.write(f"{prefix} {msg['content']}")
 
-        # Check for new messages
+        # Long polling for new messages
         try:
-            response = requests.get(f"{self.api_url}/messages")
+            response = requests.get(
+                f"{self.api_url}/messages",
+                timeout=35  # Slightly longer than server timeout
+            )
             if response.ok:
-                new_messages = response.json().get('messages', [])
+                new_messages = response.json().get('messages')
                 if new_messages:
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": new_messages
                     })
                     st.experimental_rerun()
-        except Exception as e:
-            # Silent fail for connection issues - will retry on next refresh
+        except requests.exceptions.Timeout:
+            # Expected timeout - just let it refresh
             pass
+        except Exception as e:
+            print(f"Error polling messages: {e}")
 
 if __name__ == "__main__":
     StreamlitApp().run()
