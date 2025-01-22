@@ -37,6 +37,13 @@ class StreamlitApp():
     qmap: QueueMap = QueueMap()
 
     def __init__(self):
+        try:
+            self.loop = asyncio.get_event_loop()
+        except:
+            self.loop = asyncio.new_event_loop()
+        finally:
+            asyncio.set_event_loop(self.loop)
+
         self.session = Session.new_session()
         self.messenger = StreamlitMessenger(self.receive_user_message)
         self.data = generate_database()
@@ -54,6 +61,13 @@ class StreamlitApp():
             self.qmap.MAIN_INPUT_QUEUE: self.main_agent.handle_main
         }
         self.bot = MessageBot(self.queue_consumer_map, user_input_queue=self.qmap.USER_INPUT_QUEUE)
+
+    async def setup(self):
+        await self.bot.setup()
+
+    def run(self):
+        self.loop.run_until_complete(self.setup())
+        self.messenger.run()
 
     async def mock_handler(self, queue, message):
         """
@@ -100,16 +114,11 @@ class StreamlitApp():
             print(f"ERROR: (APP) - publish_message - No message content specified: {to_queue}/{message}")
             return
         await self.bot.publish_to_rabbitmq(to_queue, message)
-
-
-    def run(self):
-        self.bot.run()
-        self.messenger.run()
-
+    
 
 if __name__ == '__main__':
     if 'app' not in st.session_state:
         logger.info("\n\n>> Creating new app\n\n")
         st.session_state.app = StreamlitApp()
-
     st.session_state.app.run()
+    

@@ -17,38 +17,51 @@ dotenv.load_dotenv('.env')
 
 
 QUEUE_USER_INPUT = 'QUEUE_USER_INPUT'
+READ_QUEUE_TIMEOUT = 30
 
 class MessageBot():
     def __init__(self, consumers: dict, user_input_queue=QUEUE_USER_INPUT):
         self.consumers = consumers  # Store the consumers
         self.user_input_queue = user_input_queue
 
-        # self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.get_event_loop()
         self.rabbitmq_connection = None
         self.rabbitmq_channel = None
 
         #self.manager = Manager(self.publish_to_rabbitmq, client_cls)
 
     async def setup(self):
-        await self.start_rabbitmq_consumer()
+        
+        if not self.rabbitmq_connection or self.rabbitmq_connection.is_closed:
+            self.rabbitmq_connection = await connect(host=os.getenv('RABBITMQ_HOST'))
+        
+        if not self.rabbitmq_channel or self.rabbitmq_channel.is_closed:
+            self.rabbitmq_channel = await self.rabbitmq_connection.channel()
 
-    async def start_rabbitmq_consumer(self):
-        self.rabbitmq_connection = await connect(host=os.getenv('RABBITMQ_HOST'))
-        self.rabbitmq_channel = await self.rabbitmq_connection.channel()
-
-        # Iterate over the consumer map to set up consumers for each queue
-        async def consume_queue(queue_name, consumer):
+        for queue_name, consumer in self.consumers.items():
             queue = await self.rabbitmq_channel.declare_queue(queue_name, durable=True)
             await queue.purge()
-            await queue.consume(lambda message: self.on_rabbitmq_message(message, consumer))
+            # Create background tasks for consumers
+            self.loop.create_task(self.start_consumer(queue, consumer))
+    
+    async def start_consumer(self, queue, consumer):
+        await queue.consume(lambda message: self.on_rabbitmq_message(message, consumer))
 
-        # Create a list of tasks to run for each queue-consumer pair
-        tasks = [consume_queue(queue_name, consumer) for queue_name, consumer in self.consumers.items()]
-        
-        # Gather all the consumer tasks to run them concurrently
-        await asyncio.gather(*tasks)
+    async def check_loop(self):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop != self.loop:
+                print(">> WARNING: Updating loop")
+                self.loop = loop
+                await self.setup()
+        except Exception as e:
+            print(f">> ERROR: {e}")
+            raise
 
     async def publish_to_rabbitmq(self, routing_key: str, message_content: str, ):
+        
+        await self.check_loop()
+
         if not self.rabbitmq_channel or self.rabbitmq_channel.is_closed:
             await self.setup()
         if type(message_content) is dict:
@@ -77,6 +90,25 @@ class MessageBot():
     async def receive_user_message(self, message: str):
         await self.publish_to_rabbitmq(self.user_input_queue, message)
 
+    async def read_queue_messages(self, queue_name):
+        """
+        Read all messages in an existing RabbitMQ queue
+        For non-consumer queues like front end messages
+        """
+        try:
+            queue = await self.rabbitmq_channel.declare_queue(queue_name, durable=True)
+            
+            # Use iterator with timeout to prevent blocking indefinitely
+            async with queue.iterator(timeout=READ_QUEUE_TIMEOUT) as queue_iter:
+                async for message in queue_iter:
+                    async with message.process():  # This handles ack/nack automatically
+                        print(f"RECEIVED from RabbitMQ: [{queue_name}]:\n{message.body.decode()}\n\n")
+                        yield message.body.decode()  # Or however you want to return the message
+                        
+        except Exception as e:
+            print(f"Error reading from queue {queue_name}: {e}")
+            raise
+
     def run(self):
         # Run the bot
-        asyncio.run(self.setup())
+        self.loop.run_until_complete(self.setup())
