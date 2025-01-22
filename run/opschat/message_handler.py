@@ -48,6 +48,7 @@ class MessageHandler:
         await self.bot.publish_to_rabbitmq(self.qmap.USER_INPUT_QUEUE, message)
 
     async def handle_user_message(self, _, message):
+        await self.bot.publish_to_rabbitmq(self.qmap.USER_OUTPUT_QUEUE, message)
         #await self.bot.receive_user_message(message)
         pass
 

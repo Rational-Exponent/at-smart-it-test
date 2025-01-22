@@ -32,7 +32,7 @@ class StreamlitApp:
         with messages_container:
             for msg in st.session_state.messages:
                 role = msg.get("role", "system")
-                prefix = "🧑 You: " if role == "user" else "🤖 Bot: "
+                prefix = "🧑 User: " if role == "user" else "🤖 Agent: "
                 st.write(f"{prefix} {msg['content']}")
 
         # Long polling for new messages

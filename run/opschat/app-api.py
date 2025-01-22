@@ -32,13 +32,13 @@ async def send_message(message: dict):
 @app.get("/messages")
 async def get_messages():
     try:
-        # Try to get a message, but don't block forever
-        message = None
-        for _ in range(30):  # Poll for up to 30 seconds
-            message = await handler.get_messages_for_user()
-            if message:
+        # Try to get messages for up to 30 seconds
+        for _ in range(30):  # 30 seconds max
+            # Get one message from the generator
+            async for message in handler.get_messages_for_user():
                 return JSONResponse({"messages": message})
-            # Small sleep to prevent tight loop
+                
+            # No message yet, sleep a bit
             await asyncio.sleep(0.1)
         
         # If no message after polling, return empty
