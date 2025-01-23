@@ -7,6 +7,11 @@ import uvicorn
 
 from message_handler import MessageHandler
 
+from logging import getLogger, INFO
+logger = getLogger(__name__)
+logger.setLevel(INFO)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -26,21 +31,32 @@ async def send_message(message: dict):
     """
     Receives a new message from the user
     """
-    await handler.handle_message(message)
+    await handler.handle_received_message(message)
     return {"status": "sent"}
 
 @app.get("/messages")
 async def get_messages():
     try:
-        # Try to get messages for up to 30 seconds
-        for _ in range(30):  # 30 seconds max
-            # Get one message from the generator
-            async for message in handler.get_messages_for_user():
-                return JSONResponse({"messages": message})
-                
-            # No message yet, sleep a bit
-            await asyncio.sleep(0.1)
+        # return JSONResponse({"messages": ["Hello, user"]})
         
+        # Create the async generator once
+        message_generator = handler.get_messages_for_user()
+        
+        # Try to get one message for up to 30 seconds
+        for _ in range(300):
+            try:
+                # Try to get the next message with a timeout
+                message = await anext(message_generator, None)
+                logger.info(f">> app-api /messages\n{message}")
+                if message is not None:
+                    return JSONResponse({"messages": [message]})
+                
+                # No message yet, sleep a bit
+                await asyncio.sleep(0.1)
+                
+            except StopAsyncIteration:
+                break
+            
         # If no message after polling, return empty
         return JSONResponse({"messages": None})
             

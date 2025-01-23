@@ -15,42 +15,26 @@ basicConfig(level=INFO)
 logger = getLogger(__name__)
 
 class QueueMap():
-    USER_INPUT_QUEUE = 'USER_INPUT_QUEUE'   # Recieve from user. API post. handle_user_message
+    USER_INPUT_QUEUE = 'USER_INPUT_QUEUE'   # Recieve from user. API post. handle_received_message
     USER_OUTPUT_QUEUE = 'USER_OUTPUT_QUEUE' # Send to user. API polling. get_messages_for_user
     MAIN_INPUT_QUEUE = 'MAIN_INPUT_QUEUE'   # Send to main agent
 
 class MessageHandler:
-    data: DataModel
     qmap: QueueMap = QueueMap()
-    main_agent: MainAgent
 
     def __init__(self):
-        self.session = Session.new_session()
-        self.data = generate_database()
-
-        # TODO: Agent factory
-        self.main_agent = MainAgent(
-            session = self.session,
-            data = self.data,
-            publish_message_function = self.publish_message,
-            client = LLMClient(self.data, self.session),
-            queue_map = self.qmap
-        )
 
         self.queue_consumer_map = {
-            self.qmap.USER_INPUT_QUEUE: self.handle_user_message,
-            self.qmap.MAIN_INPUT_QUEUE: self.main_agent.handle_main
+            # self.qmap.USER_INPUT_QUEUE: self.handle_received_message,
+            # self.qmap.MAIN_INPUT_QUEUE: self.main_agent.handle_main
         }
     
         self.bot = MessageBot(self.queue_consumer_map, user_input_queue=self.qmap.USER_INPUT_QUEUE)
 
-    async def handle_message(self, message):
-        await self.bot.publish_to_rabbitmq(self.qmap.USER_INPUT_QUEUE, message)
-
-    async def handle_user_message(self, _, message):
+    async def handle_received_message(self, message):
+        #await self.bot.publish_to_rabbitmq(self.qmap.USER_INPUT_QUEUE, message)
+        # echo to output
         await self.bot.publish_to_rabbitmq(self.qmap.USER_OUTPUT_QUEUE, message)
-        #await self.bot.receive_user_message(message)
-        pass
 
     async def get_messages_for_user(self):
         async for message in self.bot.read_queue_messages(self.qmap.USER_OUTPUT_QUEUE):

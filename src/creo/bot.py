@@ -17,7 +17,7 @@ dotenv.load_dotenv('.env')
 
 
 QUEUE_USER_INPUT = 'QUEUE_USER_INPUT'
-READ_QUEUE_TIMEOUT = 30
+READ_QUEUE_TIMEOUT = 2
 
 class MessageBot():
     def __init__(self, consumers: dict, user_input_queue=QUEUE_USER_INPUT):
@@ -96,14 +96,19 @@ class MessageBot():
         For non-consumer queues like front end messages
         """
         try:
+            await self.setup()
+            
             queue = await self.rabbitmq_channel.declare_queue(queue_name, durable=True)
             
             # Use iterator with timeout to prevent blocking indefinitely
             async with queue.iterator(timeout=READ_QUEUE_TIMEOUT) as queue_iter:
                 async for message in queue_iter:
                     async with message.process():  # This handles ack/nack automatically
-                        print(f"RECEIVED from RabbitMQ: [{queue_name}]:\n{message.body.decode()}\n\n")
+                        print(f"READ from RabbitMQ: [{queue_name}]:\n{message.body.decode()}\n\n")
+                        # yield the message
                         yield message.body.decode()  # Or however you want to return the message
+                        # delete from queue
+                        
                         
         except Exception as e:
             print(f"Error reading from queue {queue_name}: {e}")

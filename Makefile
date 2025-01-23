@@ -45,7 +45,7 @@ start-rabbitmq:
 		docker run -it --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.0-management; \
 	fi
 	
-start-all: start-mongo start-rabbitmq
+start-all-services: start-mongo start-rabbitmq
 
 code:
 	source .venv/bin/activate && code .
@@ -53,4 +53,14 @@ code:
 run-local-discord:
 	sh .venv/bin/activate && python3 run/discord/discord_app.py
 
-run: run-local
+run-front:
+	python3 -m streamlit run run/opschat/opschat-2.py
+
+run-api:
+	python3 run/opschat/app-api.py
+
+run-queue:
+	python3 run/opschat/queue_manager.py
+
+
+start-opschat: run-api run-queue run-front
