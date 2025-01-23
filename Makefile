@@ -60,7 +60,7 @@ run-api:
 	python3 run/opschat/app-api.py
 
 run-queue:
-	python3 run/opschat/queue_manager.py
+	python3 run/opschat/app-queue.py
 
 
 start-opschat: run-api run-queue run-front

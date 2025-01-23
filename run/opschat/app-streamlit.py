@@ -1,3 +1,13 @@
+"""
+DEPRICATED
+
+Initial test of Streamlit application integration with an Agent platform
+
+ISSUES:
+Streamlit app async loop management does not work with running other async process like RabbitMQ
+Requires backend API separation for queue management tasks
+"""
+
 import asyncio
 import sys
 import os

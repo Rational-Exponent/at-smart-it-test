@@ -15,7 +15,7 @@ logger.setLevel(INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await handler.bot.setup()
+    await handler.que_manager.setup()
     yield
     # Shutdown
     # Add any cleanup here if needed
@@ -31,8 +31,9 @@ async def send_message(message: dict):
     """
     Receives a new message from the user
     """
-    await handler.handle_received_message(message)
+    await handler.receive_user_message(message)
     return {"status": "sent"}
+
 
 @app.get("/messages")
 async def get_messages():
@@ -59,9 +60,18 @@ async def get_messages():
             
         # If no message after polling, return empty
         return JSONResponse({"messages": None})
-            
+    
+    except asyncio.TimeoutError:
+        return JSONResponse({"messages": None})
+    
     except Exception as e:
-        print(f"Error reading from queue: {e}")
+        import traceback
+        error_details = {
+            "error": str(e),
+            "type": type(e).__name__,
+            "traceback": traceback.format_exc()
+        }
+        print("Error reading from queue:", error_details)
         return JSONResponse({"messages": None})
 
 

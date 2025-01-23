@@ -39,6 +39,7 @@ class MessageBot():
             self.rabbitmq_channel = await self.rabbitmq_connection.channel()
 
         for queue_name, consumer in self.consumers.items():
+            logger.info(f">> SETUP: Setting up queue {queue_name}")
             queue = await self.rabbitmq_channel.declare_queue(queue_name, durable=True)
             await queue.purge()
             # Create background tasks for consumers
@@ -112,7 +113,7 @@ class MessageBot():
                         
         except Exception as e:
             print(f"Error reading from queue {queue_name}: {e}")
-            raise
+            raise e
 
     def run(self):
         # Run the bot
