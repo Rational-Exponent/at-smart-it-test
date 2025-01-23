@@ -39,6 +39,21 @@ class StreamlitApp:
                 st.error("Cannot connect to server. Is it running?")
             except Exception as e:
                 st.error(f"Error sending message: {e}")
+
+        # Refresh button
+        if st.button("Check for new messages"):
+            try:
+                response = requests.get(f"{self.api_url}/messages")
+                if response.ok:
+                    new_messages = response.json().get('messages')
+                    if new_messages:
+                        for message in new_messages:
+                            st.session_state.messages.append({
+                                "role": "assistant", 
+                                "content": message
+                            })
+            except Exception as e:
+                st.error(f"Error checking messages: {e}")
         
         # Messages display below input
         messages_container = st.container()
@@ -48,41 +63,6 @@ class StreamlitApp:
                 prefix = "🧑 You: " if role == "user" else "🤖 Bot: "
                 st.write(f"{prefix} {msg['content']}")
 
-        # Create an empty placeholder to trigger continuous updates
-        placeholder = st.empty()
-        
-        # Long polling for new messages
-        try:
-            response = requests.get(
-                f"{self.api_url}/messages",
-                timeout=35
-            )
-            if response.ok:
-                st.session_state.server_error = False
-                new_messages = response.json().get('messages')
-                if new_messages:
-                    # Add all new messages
-                    messages_added = False
-                    for message in new_messages:
-                        st.session_state.messages.append({
-                            "role": "assistant",
-                            "content": message
-                        })
-                        messages_added = True
-                    
-                    # Only rerun once after adding all messages
-                    if messages_added:
-                        time.sleep(2)  # Wait before retry
-                        st.rerun()
-                        
-        except requests.exceptions.Timeout:
-            # Expected timeout - just refresh
-            st.rerun()
-        except (requests.exceptions.ConnectionError, requests.exceptions.RequestException) as e:
-            print(f"Server connection error: {e}")
-            st.session_state.server_error = True
-            time.sleep(2)  # Wait before retry
-            st.rerun()
 
 if __name__ == "__main__":
     StreamlitApp().run()
