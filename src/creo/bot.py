@@ -48,21 +48,7 @@ class MessageBot():
     async def start_consumer(self, queue, consumer):
         await queue.consume(lambda message: self.on_rabbitmq_message(message, consumer))
 
-    async def check_loop(self):
-        try:
-            loop = asyncio.get_event_loop()
-            if loop != self.loop:
-                print(">> WARNING: Updating loop")
-                self.loop = loop
-                await self.setup()
-        except Exception as e:
-            print(f">> ERROR: {e}")
-            raise
-
     async def publish_to_rabbitmq(self, routing_key: str, message_content: str, ):
-        
-        await self.check_loop()
-
         if not self.rabbitmq_channel or self.rabbitmq_channel.is_closed:
             await self.setup()
         if type(message_content) is dict:

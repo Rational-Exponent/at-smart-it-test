@@ -10,7 +10,7 @@ if lib_path not in sys.path:
     sys.path.insert(0, lib_path)
 
 
-from creo.llm.llm_client import LLMClient
+from creo.llm.llm_openai import LLMClientOpenAI as LLMClient
 from creo.vision import VisionClientBase
 from creo.session import Session
 from creo.data import DataModel
@@ -19,6 +19,7 @@ from database import generate_datase
 
 from message_handler import MessageHandler
 from queue_map import QueueMap
+from agent_main import MainAgent
 
 from logging import getLogger, INFO
 logger = getLogger(__name__)
@@ -39,23 +40,47 @@ class OpschatQueueManager():
     qmap: QueueMap = QueueMap()
     que_consumer_map: dict = None
 
+    agent_main: MainAgent
+
     def __init__(self):
         self.messenger = MessageHandler(self.receive_user_message)
-
+        
         self.loop = asyncio.get_event_loop()
         self.rabbitmq_connection = None
         self.rabbitmq_channel = None
 
-        self.que_consumer_map = {
-                self.qmap.USER_INPUT_QUEUE: self.receive_user_message,
-                # self.qmap.USER_OUTPUT_QUEUE: None, # Read by API
-                self.qmap.MAIN_INPUT_QUEUE: self.mock_handler
-        }
+        
 
     async def setup(self):        
         if self.que_manager is None:
+            self.agent_main = MainAgent(
+                session=self.session,
+                data = self.data,
+                publish_message_function = self.publish_message,
+                client = LLMClient(self.data, self.session),
+                queue_map=self.qmap
+            )
+
+            self.que_consumer_map = {
+                    self.qmap.USER_INPUT_QUEUE: self.receive_user_message,
+                    # self.qmap.USER_OUTPUT_QUEUE: None, # Read by API
+                    self.qmap.MAIN_INPUT_QUEUE: self.agent_main.handle_main
+            }
+
             self.que_manager = MessageBot(self.que_consumer_map, user_input_queue=self.qmap.USER_INPUT_QUEUE)
             await self.que_manager.setup()
+    
+    async def publish_message(self, to_queue: str, message: str):
+        # NOTE: We need to ue this App method in the queue map instead of the bot method directly.
+        # This is because due to the *order of operations*, the queue manager instance does not exist when the agents and queue map is created.
+        if not to_queue:
+            logger.error(f"ERROR: (APP) - publish_message - No destination queue specified: {to_queue}/{message}")
+            return
+        if not message:
+            logger.error(f"ERROR: (APP) - publish_message - No message content specified: {to_queue}/{message}")
+            return
+        await self.que_manager.publish_to_rabbitmq(to_queue, message)
+
 
     async def mock_handler(self, queue, message):
         """
@@ -82,17 +107,33 @@ class OpschatQueueManager():
             "content": "NOT IMPLEMENTED"
         }
         
-        await self.bot.publish_to_rabbitmq(message_obj.get("from_queue"), response)
+        await self.que_manager.publish_to_rabbitmq(message_obj.get("from_queue"), response)
 
     async def receive_user_message(self, _, message: str):
+        """
+        Query pre-processing goes here. Things like guardrails, intent, other feature extraction
+        """
         if message.startswith('!'):
             # await self.manager.handle_command(message)
             pass
         else:
-            # ECHO the message to output
-            await self.que_manager.publish_to_rabbitmq(self.qmap.USER_OUTPUT_QUEUE, message)
+            # Pass the message through to the main agent
+            await self.que_manager.publish_to_rabbitmq(self.qmap.MAIN_INPUT_QUEUE, message)
+            
+            # # ECHO the message to output
+            # await self.que_manager.publish_to_rabbitmq(self.qmap.USER_OUTPUT_QUEUE, message)
 
-    
+    async def publish_message(self, to_queue: str, message: str):
+        # NOTE: We need to ue this class method in the queue map instead of the queue manager method directly.
+        # This is because the bot instance does not exist when the agents and queue map is created.
+        if not to_queue:
+            logger.error(f"ERROR: (APP) - publish_message - No destination queue specified: {to_queue}/{message}")
+            return
+        if not message:
+            logger.error(f"ERROR: (APP) - publish_message - No message content specified: {to_queue}/{message}")
+            return
+        await self.que_manager.publish_to_rabbitmq(to_queue, message)
+
     def run(self):
         # Run the bot
         self.loop.run_until_complete(self.setup())

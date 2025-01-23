@@ -16,7 +16,7 @@ class StreamlitApp:
     def run(self):
         # UI Elements
         st.image(image=IMAGE_DATA)
-        st.title("Opschat test client")
+        st.title("OpsChat")
 
         # Input area at the top
         query = st.text_input(
@@ -60,7 +60,7 @@ class StreamlitApp:
         with messages_container:
             for msg in st.session_state.messages:
                 role = msg.get("role", "system")
-                prefix = "🧑 You: " if role == "user" else "🤖 Bot: "
+                prefix = "🧑 User: " if role == "user" else "🤖 Agent: "
                 st.write(f"{prefix} {msg['content']}")
 
 
