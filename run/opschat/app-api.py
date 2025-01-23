@@ -31,7 +31,8 @@ async def send_message(message: dict):
     """
     Receives a new message from the user
     """
-    await handler.receive_user_message(message)
+    logger.info(f"\n\nsend_message /message post: {message}")
+    await handler.receive_user_message(message.get('content'))
     return {"status": "sent"}
 
 

@@ -2,6 +2,7 @@ import os
 import json
 from functools import wraps
 from typing import Any
+import traceback
 
 from ..llm.llm_client import LLMClient
 from ..data import DataModel
@@ -111,13 +112,21 @@ class AgentBase():
             except json.JSONDecodeError:
                 message_obj = dict(role="system", content=str(message))
 
-        # Store new message
-        new_message = MessageType(
-            session=self.session,
-            role=message_obj["role"],
-            content=message_obj["content"]
-        )
-        self.data.messages.add_item(new_message)
+        try:
+            # Store new message
+            new_message = MessageType(
+                session=self.session,
+                role=message_obj["role"],
+                content=message_obj["content"]
+            )
+            self.data.messages.add_item(new_message)
+        except Exception as e:
+            error_details = {
+                "error": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+            logger.error(f">> agent > save_message: \nmessage: {message}\nerror: {error_details}")
         
 
     async def handle_user_message(self, input_message):

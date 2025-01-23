@@ -118,7 +118,7 @@ class OpschatQueueManager():
             pass
         else:
             # Pass the message through to the main agent
-            await self.que_manager.publish_to_rabbitmq(self.qmap.MAIN_INPUT_QUEUE, message)
+            await self.que_manager.publish_to_rabbitmq(self.qmap.MAIN_INPUT_QUEUE, dict(role="user", content=message))
             
             # # ECHO the message to output
             # await self.que_manager.publish_to_rabbitmq(self.qmap.USER_OUTPUT_QUEUE, message)

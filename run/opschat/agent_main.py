@@ -1,16 +1,17 @@
 import os
+import json
 
 from creo.agent.agent import AgentBase
 from creo.llm.llm_client import LLMClient
 from creo.data import DataModel
 from creo.data.types import (
-    NoteType,
+    MessageType
 )
 from creo.xml import XMLParser
 from creo.session import Session
 from queue_map import QueueMap
 
-import streamlit as st
+import socket
 
 import logging
 logger = logging.getLogger(__name__)
@@ -34,12 +35,31 @@ class MainAgent(AgentBase):
         """
         print(">> MAIN handler")
 
-        # # Instructions
-        # path = os.path.join(os.path.dirname(__file__), "config", "MAIN.txt")
-        # instructions = self.load_file(path)
+        # TODO: State management
 
-        # # Stage
-        # stage = st.session_state.agent_stage
+        # Instructions
+        path = os.path.join(os.path.dirname(__file__), "config", "MAIN.txt")
+        instructions = self.load_file(path)
 
-        await self.publish_message("MOCK-OUTPUT", self.qmap.USER_OUTPUT_QUEUE)
+        # Message History
+        await self.save_message(message)
+        message_history = self.data.messages.get_items_by_session(self.session)
 
+        context = {
+            "instructions": instructions,
+            "message-history": message_history
+        }
+        input_str = json.dumps(context)
+        response = self.client.get_chat_completion(input_str)
+
+        await self.publish_message(self.qmap.USER_OUTPUT_QUEUE, response)
+
+        if "<tool_ip>" in response:
+            await self.tool_ip()
+
+
+    async def tool_ip(self):
+        hostname = socket.gethostname()
+        response = f"Host info: {hostname}, {socket.gethostbyname(hostname)}"
+        
+        await self.publish_message(response, self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
