@@ -6,11 +6,13 @@ Streamlit front-end
 FastAPI backend
 RabbitMQ message queue
 
-### Queue Mangaer
+### RabbitMQ
 To start the *RabbitMQ backend* initially, run:
 ```bash
 make start-rabbitmq
 ```
+
+### Queue Mangaer
 Then to start the *Queue Manager*
 Run the following command from project root
 ```bash

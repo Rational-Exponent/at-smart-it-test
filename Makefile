@@ -25,7 +25,7 @@ start-mongo:
 		fi \
 	else \
 		echo "MongoDB container does not exist, creating new one..."; \
-		docker run --name mongodb -d mongodb/mongodb-community-server:6.0-ubi8; \
+		docker run --name mongodb -d -p 27017:27017 mongodb/mongodb-community-server:6.0-ubi8; \
 	fi
 
 

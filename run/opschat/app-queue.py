@@ -10,16 +10,18 @@ if lib_path not in sys.path:
     sys.path.insert(0, lib_path)
 
 
-from creo.llm.llm_openai import LLMClientOpenAI as LLMClient
+#from creo.llm.llm_openai import LLMClientOpenAI as LLMClient
 from creo.vision import VisionClientBase
 from creo.session import Session
 from creo.data import DataModel
 from creo.bot import MessageBot
+
 from database import generate_datase
 
 from message_handler import MessageHandler
 from queue_map import QueueMap
 from agent_main import MainAgent
+
 
 from logging import getLogger, INFO
 logger = getLogger(__name__)
@@ -57,7 +59,6 @@ class OpschatQueueManager():
                 session=self.session,
                 data = self.data,
                 publish_message_function = self.publish_message,
-                client = LLMClient(self.data, self.session),
                 queue_map=self.qmap
             )
 

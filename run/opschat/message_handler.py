@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
 from creo.bot import MessageBot
 from creo.messenger.base import MessengerBase
+from creo.agent.agent import AgentBase
 
 from queue_map import QueueMap
 
@@ -36,7 +37,7 @@ class MessageHandler(MessengerBase):
 
     async def get_messages_for_user(self):
         async for message in self.que_manager.read_queue_messages(self.qmap.USER_OUTPUT_QUEUE):
-            yield message
+            yield AgentBase.unpack_message(None, message)
 
     async def send_user_image(self, message):
         pass

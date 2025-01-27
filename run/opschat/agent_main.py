@@ -2,7 +2,7 @@ import os
 import json
 
 from creo.agent.agent import AgentBase
-from creo.llm.llm_client import LLMClient
+from creo.llm.llm_aws import LLMClientBedrock as LLMClient
 from creo.data import DataModel
 from creo.data.types import (
     MessageType
@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 class MainAgent(AgentBase):
     data: DataModel
 
-    def __init__(self, session: Session, data: DataModel, publish_message_function: callable, client: LLMClient, queue_map: QueueMap):
-        super().__init__(session, data, publish_message_function, client, queue_map.MAIN_INPUT_QUEUE)
+    def __init__(self, session: Session, data: DataModel, publish_message_function: callable, queue_map: QueueMap):
+        super().__init__(session, data, publish_message_function, LLMClient(data,session), queue_map.MAIN_INPUT_QUEUE)
         self.qmap = queue_map
 
     async def handle_user_message(self, _, input_message):
@@ -47,12 +47,12 @@ class MainAgent(AgentBase):
 
         context = {
             "instructions": instructions,
-            "message-history": message_history
+            "message-history": [m.to_dict() for m in message_history] if message_history else []
         }
         input_str = json.dumps(context)
         response = self.client.get_chat_completion(input_str)
 
-        await self.publish_message(self.qmap.USER_OUTPUT_QUEUE, response)
+        await self.publish_message(response, self.qmap.USER_OUTPUT_QUEUE)
 
         if "<tool_ip>" in response:
             await self.tool_ip()

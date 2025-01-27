@@ -58,22 +58,14 @@ class AgentBase():
             "content": content
         }
     
-    def unpack_message(self, queue_name: str, message: str):
+    @staticmethod
+    def unpack_message(queue_name: str, message: str):
         try:
             # Decode message envelope
             if type(message) is dict:
                 message_obj = message
             else:
                 message_obj = json.loads(message)
-
-            # # Extract header details
-            # self.session = Session(
-            #     message_obj["from_session"]["session_id"], 
-            #     message_obj["from_session"]["thread_id"]
-            # )
-
-            # Extract message content
-            # message = message_obj["content"]
 
             return message_obj["content"]
 
@@ -86,7 +78,7 @@ class AgentBase():
         """Decorator that automatically unpacks messages before processing"""
         @wraps(method)
         async def wrapper(self: AgentBase, queue_name: str, message: Any, *args, **kwargs):
-            unpacked_message = self.unpack_message(queue_name, message)
+            unpacked_message = AgentBase.unpack_message(queue_name, message)
             return await method(self, unpacked_message, *args, **kwargs)
         return wrapper
     

@@ -57,7 +57,7 @@ class MessageBot():
             message_content = str(message_content)
         message = Message(message_content.encode())
         
-        print(f"\n\n>> bot.publish_to_rabbitmq[{routing_key}] {message_content}")
+        logger.info(f"\n\n>> bot.publish_to_rabbitmq [{routing_key}] {message_content}")
         try:
             await self.rabbitmq_channel.default_exchange.publish(
                 message, routing_key=routing_key

@@ -2,6 +2,7 @@ from typing import Optional, List
 from creo.data.database_interface import GenericDatabaseInterface, DictionaryMixin
 from creo.session import Session
 import time
+import json
 
 class MessageType(DictionaryMixin):
     session: Session
@@ -16,7 +17,12 @@ class MessageType(DictionaryMixin):
         self.role = role
         self.content = content
         self.created_at = created_at if created_at is not None else int(time.time() * 1000)
-        
+    
+    def __str__(self):
+        return json.dumps(self.to_dict())
+    
+    def __repr__(self):
+        return json.dumps(self.to_dict())
 
 class MessageModel(GenericDatabaseInterface[MessageType]):
     def __init__(self, db: GenericDatabaseInterface[MessageType]):
