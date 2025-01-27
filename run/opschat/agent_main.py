@@ -27,6 +27,23 @@ class MainAgent(AgentBase):
         print("\n\n>>> handle_user_message")
         await self.handle_main(_, self.pack_message(dict(role="user", content=input_message), self.qmap.USER_OUTPUT_QUEUE))
     
+    
+    def fuse_history_roles(self, messages):
+        if not messages:
+            return []
+        
+        fused = []
+        for message in messages:
+            if not fused or fused[-1]["role"] != message["role"]:
+                # If this is first message or role is different, add as new message
+                fused.append(message.copy())  # Make a copy to avoid modifying original
+            else:
+                # If same role as previous, concatenate content
+                fused[-1]["content"] += "\n\n"+ message["content"]
+        
+        return fused
+    
+
     @AgentBase.with_unpacking
     async def handle_main(self, message):
         """
@@ -45,21 +62,34 @@ class MainAgent(AgentBase):
         await self.save_message(message)
         message_history = self.data.messages.get_items_by_session(self.session)
 
-        context = {
-            "instructions": instructions,
-            "message-history": [m.to_dict() for m in message_history] if message_history else []
-        }
-        input_str = json.dumps(context)
-        response = self.client.get_chat_completion(input_str)
+        # context = {
+        #     "instructions": instructions,
+        #     "message-history": [dict(role=m.role, content=m.content) for m in message_history] if message_history else []
+        # }
+        # input_str = json.dumps(context)
+        # response = self.client.get_chat_completion(input_str)
+
+        input_list = [
+            dict(role="user", content=instructions),
+            dict(role="assistant", content="Waiting for input.")
+        ]
+        for m in message_history:
+            input_list.append(dict(role=m.role, content=m.content))
+
+        input_list = self.fuse_history_roles(input_list)
+        response = self.client.get_chat_completion(input_list)
+
+        await self.save_message({"role": "assistant", "content": response})
 
         await self.publish_message(response, self.qmap.USER_OUTPUT_QUEUE)
 
-        if "<tool_ip>" in response:
-            await self.tool_ip()
+        if "<tool-local-ip/>" in response:
+            await self.tool_local_ip()
 
 
-    async def tool_ip(self):
+    async def tool_local_ip(self):
+        logger.info(">> tool_local_ip ")
         hostname = socket.gethostname()
-        response = f"Host info: {hostname}, {socket.gethostbyname(hostname)}"
+        response = f"<tool-output>Host info: {hostname}, {socket.gethostbyname(hostname)}</tool-output>"
         
         await self.publish_message(response, self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")

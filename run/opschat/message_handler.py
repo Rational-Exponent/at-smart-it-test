@@ -28,7 +28,7 @@ class MessageHandler(MessengerBase):
         self.que_manager = MessageBot(self.queue_consumer_map, user_input_queue=self.qmap.USER_INPUT_QUEUE)
 
     async def receive_user_message(self, message):
-        await self.que_manager.publish_to_rabbitmq(self.qmap.USER_INPUT_QUEUE, message)
+        await self.que_manager.publish_to_rabbitmq(self.qmap.USER_INPUT_QUEUE,  {"role":"user", "content": message})
         # # echo to output
         # await self.que_manager.publish_to_rabbitmq(self.qmap.USER_OUTPUT_QUEUE, message)
 

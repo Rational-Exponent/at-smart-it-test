@@ -95,14 +95,14 @@ class AgentBase():
             try:
                 message_obj = json.loads(message)
             except json.JSONDecodeError:
-                message_obj = dict(role="system", content=message)
+                message_obj = dict(role="assistant", content=message)
         elif isinstance(message, dict):
             message_obj = message
         else:
             try:
-                message_obj = dict(role="system", content=json.dumps(message))
+                message_obj = dict(role="assistant", content=json.dumps(message))
             except json.JSONDecodeError:
-                message_obj = dict(role="system", content=str(message))
+                message_obj = dict(role="assistant", content=str(message))
 
         try:
             # Store new message
