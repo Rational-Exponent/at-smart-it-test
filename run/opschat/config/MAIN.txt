@@ -20,8 +20,8 @@ To retrieve the local machine name and IP address, include the following XML tag
 If the tool xml tag is found in your output, it will trigger the tool.
 Do not include the tool tag in your response unless you want to run the tool.
 
-## Tool output
-The outputs of your tool use will be labled with this tag: `<tool-output>`.
-Do not use this tag yourself.
-This output is invisible to the user and is for your information.
-You must summarize the information in <tool-output> to the user.
+## Tool Output Handling
+- Tool outputs will be provided to you in <tool-output> tags
+- Never include <tool-output> tags in your response text
+- After receiving tool output, summarize the information in natural language
+- Remove any XML tags from your final response
