@@ -1,0 +1,30 @@
+## **Tools**
+
+You have the following tools available to you. To use one of the tools, you must provide the correct XML tag within your response.
+
+### Tool List
+{% for tool in tool_list %}
+{{ tool }}
+{%  endfor %}
+
+### Tool Use
+To use a tool you must provide the following xml tag and JSON content in your output:
+```xml
+<tool-use>
+{
+    "tool_name": str, # The 'tool_name' value of the tool you want to use
+    "params": Optional[dict], # Dictionary of parameters based on the tool 'signature'
+}
+</tool-use>
+```
+
+### Important Rules for using Tools
+If the tool xml tag is found in your output, it will trigger the tool.
+Do not include the tool tag in your response unless you want to run the tool.
+
+## Tool Output Handling
+- Tool outputs will be provided to you in <tool-output> tags by the system
+- Tool outputs are provided by the system, not the user, and the user does not see them
+- After receiving tool output, summarize the information in natural language
+- Remove any XML tags from your final response
+- Never include <tool-output> tags in your response text

@@ -1,5 +1,7 @@
 import os
 import json
+import asyncio
+import re
 
 from creo.agent.agent import AgentBase
 from creo.llm.llm_aws import LLMClientBedrock as LLMClient
@@ -22,6 +24,10 @@ class MainAgent(AgentBase):
     def __init__(self, session: Session, data: DataModel, publish_message_function: callable, queue_map: QueueMap):
         super().__init__(session, data, publish_message_function, LLMClient(data,session), queue_map.MAIN_INPUT_QUEUE)
         self.qmap = queue_map
+        self.register_tools([
+            self.tool_local_ip,
+            self.tool_system_time
+        ])
 
     async def handle_user_message(self, _, input_message):
         print("\n\n>>> handle_user_message")
@@ -62,15 +68,23 @@ class MainAgent(AgentBase):
         await self.save_message(message)
         message_history = self.data.messages.get_items_by_session(self.session)
 
+        # Tool belt
+        tools = self.get_tool_prompt()
+        
+        context = {
+            "instructions": instructions,
+            "tools": tools
+        }
+
         # context = {
         #     "instructions": instructions,
         #     "message-history": [dict(role=m.role, content=m.content) for m in message_history] if message_history else []
         # }
-        # input_str = json.dumps(context)
+        input_str = json.dumps(context)
         # response = self.client.get_chat_completion(input_str)
 
         input_list = [
-            dict(role="user", content=instructions),
+            dict(role="user", content=input_str),
             dict(role="assistant", content="Waiting for input.")
         ]
         for m in message_history:
@@ -81,15 +95,31 @@ class MainAgent(AgentBase):
 
         await self.save_message({"role": "assistant", "content": response})
 
+        # Send copy to user
         await self.publish_message(response, self.qmap.USER_OUTPUT_QUEUE)
 
-        if "<tool-local-ip/>" in response:
-            await self.tool_local_ip()
+        # Process all tool calls
+        error = await self.handle_tool_calling(response)
+
+        if error:
+            await self.publish_message(error, self.qmap.MAIN_INPUT_QUEUE)
 
 
     async def tool_local_ip(self):
+        """
+        Retrieves the local system host name and IP address
+        """
         logger.info(">> tool_local_ip ")
         hostname = socket.gethostname()
         response = f"<tool-output>Host info: {hostname}, {socket.gethostbyname(hostname)}</tool-output>"
-        
-        await self.publish_message(response, self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
+        await self.publish_message(dict(role="user", content=response), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
+
+
+    async def tool_system_time(self):
+        """
+        Retrieves the local system time
+        """
+        logger.info(">> tool_system_time")
+        from datetime import datetime
+        response = f"<tool-output>System time: {str(datetime.now())}</tool-output>"
+        await self.publish_message(dict(role="user", content=response), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")

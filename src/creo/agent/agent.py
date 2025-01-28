@@ -1,8 +1,11 @@
 import os
 import json
 from functools import wraps
-from typing import Any
+from typing import Any, List, Callable
 import traceback
+import inspect
+from jinja2 import Template
+import re
 
 from ..llm.llm_client import LLMClient
 from ..data import DataModel
@@ -20,6 +23,7 @@ class AgentBase():
     agent_queue: str = None
     reply_queue: str = None
     envelope: dict = None
+    tool_registry: list = []
 
     def __init__(self, session: Session, data_model: DataModel, publish_message_function: callable, llm_client: LLMClient, agent_queue: str):
         self.session = session
@@ -126,3 +130,60 @@ class AgentBase():
     
     async def handle_main(self, message):
         raise NotImplementedError
+
+    def register_tools(self, tool_list: List[Callable]):
+        """
+        Registers the provided functions as callable tools for the agent
+        """
+        descriptions = []
+        pallete = {}
+
+        for tool in tool_list:
+            sig = str(inspect.signature(tool))
+            docstr = inspect.getdoc(tool)
+            name = tool.__name__
+
+            if not docstr:
+                raise ValueError(f"ERROR: missing docstring for {name} tool function")
+            
+            descriptions.append({
+                "tool_name": name,
+                "description": docstr,
+                "signature": sig
+            })
+            pallete[name] = tool
+
+        self.tool_registry = descriptions
+        self.tool_palette = pallete
+        return descriptions
+    
+    def get_tool_prompt(self):
+        if not self.tool_registry:
+            return None
+        
+        path = os.path.join(os.path.dirname(__file__), "config", "TOOLS.j2")
+        template = Template(self.load_file(path))
+        rendered = template.render(
+            tool_list=self.tool_registry
+        )
+        return rendered
+    
+
+    async def handle_tool_calling(self, response):
+        if "<tool-output>" in response:
+            raise RuntimeError("HALLUCINATION: <tool-output> in agent output.")
+        tool_use_pattern = r'<tool-use>(.*?)</tool-use>'
+        tool_use_match = re.search(tool_use_pattern, response, re.DOTALL)
+        if tool_use_match:
+            json_str = tool_use_match.group(1).strip()
+            try:
+                tool_data = json.loads(json_str)
+                tool_func = self.tool_palette.get(tool_data.get("tool_name"))
+                tool_params = tool_data.get("params", {})
+                await tool_func(**tool_params)
+            except json.JSONDecodeError:
+                return "<tool-output>ERROR: Invalid JSON format</tool-output>"
+            finally:
+                return None
+                
+
