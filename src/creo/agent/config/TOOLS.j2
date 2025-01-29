@@ -22,9 +22,8 @@ To use a tool you must provide the following xml tag and JSON content in your ou
 If the tool xml tag is found in your output, it will trigger the tool.
 Do not include the tool tag in your response unless you want to run the tool.
 
-## Tool Output Handling
-- Tool outputs will be provided to you in <tool-output> tags by the system
-- Tool outputs are provided by the system, not the user, and the user does not see them
-- After receiving tool output, summarize the information in natural language
-- Remove any XML tags from your final response
-- Never include <tool-output> tags in your response text
+### Tool Output Handling
+- Tool outputs will be provided to you in <tool-output> tags by the system, not the user, and the user does not see these tags.
+- If you see <tool-output> in the message history, summarize the information in natural language.
+- Remove any XML tags from your final response.
+- Never include <tool-output> tags in your response text.

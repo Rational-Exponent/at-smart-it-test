@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import re
+from datetime import datetime
 
 from creo.agent.agent import AgentBase
 from creo.llm.llm_aws import LLMClientBedrock as LLMClient
@@ -26,7 +27,8 @@ class MainAgent(AgentBase):
         self.qmap = queue_map
         self.register_tools([
             self.tool_local_ip,
-            self.tool_system_time
+            self.tool_system_time,
+            self.tool_query_program_logs
         ])
 
     async def handle_user_message(self, _, input_message):
@@ -73,7 +75,9 @@ class MainAgent(AgentBase):
         
         context = {
             "instructions": instructions,
-            "tools": tools
+            "tools": tools,
+            "system-time": str(datetime.now()),
+            "important": "Never include <tool-output> tags in your response text."
         }
 
         # context = {
@@ -82,6 +86,14 @@ class MainAgent(AgentBase):
         # }
         input_str = json.dumps(context)
         # response = self.client.get_chat_completion(input_str)
+
+        context = [
+            f"# Instructions\n{instructions}",
+            f"# Tools\n{tools}",
+            f"# System Information\nsystem time: {str(datetime.now())}",
+        ]
+        input_str = '\n\n'.join(context)
+        
 
         input_list = [
             dict(role="user", content=input_str),
@@ -122,4 +134,40 @@ class MainAgent(AgentBase):
         logger.info(">> tool_system_time")
         from datetime import datetime
         response = f"<tool-output>System time: {str(datetime.now())}</tool-output>"
+        await self.publish_message(dict(role="user", content=response), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
+
+
+    async def tool_query_program_logs(self, begin_date: str, end_date: str, prompt: str, application: str=None, ip: str=None, change_id: str=None):
+        """
+        This tool will query program log entries based on the provided application details and date periods.
+        The following must always be provided to limit the scope of the logs:
+            begin_date,
+            end_date,
+            prompt 
+        The following are additional filters that can be added to reduce the scope of the logs:
+            application: name of application, 
+            ip: ip address of server,
+            change_id: related change_id
+        """
+        logger.info(">> tool_query_program_logs")
+        
+        from vector_store_util import VectorStoreUtil
+        vector_store_util = VectorStoreUtil()
+
+        intent = {
+            'begin_date': begin_date,
+            'end_date': end_date
+        }
+        if application:
+            intent['application'] = application
+        if ip:
+            intent['ip'] = ip
+        if change_id:
+            intent['change_id'] = change_id
+
+        results = vector_store_util.query_data(
+            prompt=prompt,
+            intent=intent
+        )
+        response = f"<tool-output>[tool_query_program_logs]:{results}\n</tool-output>"
         await self.publish_message(dict(role="user", content=response), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
