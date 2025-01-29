@@ -14,6 +14,9 @@ from creo.xml import XMLParser
 from creo.session import Session
 from queue_map import QueueMap
 
+from vector_store_util import VectorStoreUtil
+from tool_quadrant import tool_query_program_logs
+
 import socket
 
 import logging
@@ -28,29 +31,9 @@ class MainAgent(AgentBase):
         self.register_tools([
             self.tool_local_ip,
             self.tool_system_time,
-            self.tool_query_program_logs
+            tool_query_program_logs
         ])
 
-    async def handle_user_message(self, _, input_message):
-        print("\n\n>>> handle_user_message")
-        await self.handle_main(_, self.pack_message(dict(role="user", content=input_message), self.qmap.USER_OUTPUT_QUEUE))
-    
-    
-    def fuse_history_roles(self, messages):
-        if not messages:
-            return []
-        
-        fused = []
-        for message in messages:
-            if not fused or fused[-1]["role"] != message["role"]:
-                # If this is first message or role is different, add as new message
-                fused.append(message.copy())  # Make a copy to avoid modifying original
-            else:
-                # If same role as previous, concatenate content
-                fused[-1]["content"] += "\n\n"+ message["content"]
-        
-        return fused
-    
 
     @AgentBase.with_unpacking
     async def handle_main(self, message):
@@ -137,7 +120,7 @@ class MainAgent(AgentBase):
         await self.publish_message(dict(role="user", content=response), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
 
 
-    async def tool_query_program_logs(self, begin_date: str, end_date: str, prompt: str, application: str=None, ip: str=None, change_id: str=None):
+    async def handle_query_program_logs(self,**kwargs):
         """
         This tool will query program log entries based on the provided application details and date periods.
         The following must always be provided to limit the scope of the logs:
@@ -151,23 +134,6 @@ class MainAgent(AgentBase):
         """
         logger.info(">> tool_query_program_logs")
         
-        from vector_store_util import VectorStoreUtil
-        vector_store_util = VectorStoreUtil()
-
-        intent = {
-            'begin_date': begin_date,
-            'end_date': end_date
-        }
-        if application:
-            intent['application'] = application
-        if ip:
-            intent['ip'] = ip
-        if change_id:
-            intent['change_id'] = change_id
-
-        results = vector_store_util.query_data(
-            prompt=prompt,
-            intent=intent
-        )
-        response = f"<tool-output>[tool_query_program_logs]:{results}\n</tool-output>"
-        await self.publish_message(dict(role="user", content=response), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
+        result = tool_query_program_logs(kwargs)
+        await self.publish_message(dict(role="user", content=result), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
+        

@@ -187,3 +187,17 @@ class AgentBase():
                 return None
                 
 
+    def fuse_history_roles(self, messages):
+        if not messages:
+            return []
+        
+        fused = []
+        for message in messages:
+            if not fused or fused[-1]["role"] != message["role"]:
+                # If this is first message or role is different, add as new message
+                fused.append(message.copy())  # Make a copy to avoid modifying original
+            else:
+                # If same role as previous, concatenate content
+                fused[-1]["content"] += "\n\n"+ message["content"]
+        
+        return fused
