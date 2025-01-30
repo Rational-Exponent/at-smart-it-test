@@ -28,13 +28,18 @@ async def tool_query_program_logs(begin_date: str, end_date: str, prompt: str, a
     if change_id:
         intent['change_id'] = change_id
 
-    results = vector_store_util.query_data(
-        collection_name='opschat_data',
-        prompt=prompt,
-        intent=intent,
-        begin_date=begin_date,
-        end_date=end_date
-    )
+    logger.info(">> querying qdrant...")
+    try:
+        results = vector_store_util.query_data(
+            collection_name='opschat_data',
+            prompt=prompt,
+            intent=intent,
+            begin_date=begin_date,
+            end_date=end_date
+        )
+    except Exception as e:
+        logger.error(f"ERROR: tool_query_program_logs > error running qdrant query .... {str(e)}")
+        return f"ERROR: tool_query_program_logs > error running qdrant query .... {str(e)}"
 
     return f"<tool-output>[tool_query_program_logs]:{results}\n</tool-output>"
     

@@ -172,19 +172,31 @@ class AgentBase():
     async def handle_tool_calling(self, response):
         if "<tool-output>" in response:
             raise RuntimeError("HALLUCINATION: <tool-output> in agent output.")
+        
         tool_use_pattern = r'<tool-use>(.*?)</tool-use>'
-        tool_use_match = re.search(tool_use_pattern, response, re.DOTALL)
-        if tool_use_match:
-            json_str = tool_use_match.group(1).strip()
+        tool_matches = re.finditer(tool_use_pattern, response, re.DOTALL)
+        
+        errors = []
+        
+        for match in tool_matches:
+            json_str = match.group(1).strip()
             try:
                 tool_data = json.loads(json_str)
                 tool_func = self.tool_palette.get(tool_data.get("tool_name"))
+                
+                if not tool_func:
+                    errors.append(f"<tool-output>ERROR: Tool '{tool_data.get('tool_name')}' not found</tool-output>")
+                    continue
+                    
                 tool_params = tool_data.get("params", {})
                 await tool_func(**tool_params)
+                
             except json.JSONDecodeError:
-                return "<tool-output>ERROR: Invalid JSON format</tool-output>"
-            finally:
-                return None
+                errors.append("<tool-output>ERROR: Invalid JSON format</tool-output>")
+            except Exception as e:
+                errors.append(f"<tool-output>ERROR: Tool execution failed - {str(e)}</tool-output>")
+        
+        return errors if errors else None
                 
 
     def fuse_history_roles(self, messages):

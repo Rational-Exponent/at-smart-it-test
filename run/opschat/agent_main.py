@@ -14,7 +14,6 @@ from creo.xml import XMLParser
 from creo.session import Session
 from queue_map import QueueMap
 
-from vector_store_util import VectorStoreUtil
 from tool_quadrant import tool_query_program_logs
 
 import socket
@@ -31,7 +30,7 @@ class MainAgent(AgentBase):
         self.register_tools([
             self.tool_local_ip,
             self.tool_system_time,
-            tool_query_program_logs
+            self.handle_query_program_logs
         ])
 
 
@@ -73,7 +72,7 @@ class MainAgent(AgentBase):
         context = [
             f"# Instructions\n{instructions}",
             f"# Tools\n{tools}",
-            f"# System Information\nsystem time: {str(datetime.now())}",
+            f"# System Information\n## system time: 2024-07-04T11:16:52.644950", # {str(datetime.now())}",
         ]
         input_str = '\n\n'.join(context)
         
@@ -132,8 +131,8 @@ class MainAgent(AgentBase):
             ip: ip address of server,
             change_id: related change_id
         """
-        logger.info(">> tool_query_program_logs")
+        logger.info(">> agent.handle_query_program_logs")
         
-        result = tool_query_program_logs(kwargs)
+        result = await tool_query_program_logs(**kwargs)
         await self.publish_message(dict(role="user", content=result), self.qmap.MAIN_INPUT_QUEUE, "TOOL-CALL")
         

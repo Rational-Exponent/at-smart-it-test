@@ -14,9 +14,8 @@ scroll_response = client.scroll(
     collection_name="opschat_data",
     limit=100,
     with_vectors=True,  # This is key - we need to explicitly request vectors
-    with_payload=True   # Get payload too
+    with_payload=True,   # Get payload too
 )
-
 
 # Look at the vectors and payloads
 for point in scroll_response[0]:  # [0] contains points, [1] contains next_page_offset

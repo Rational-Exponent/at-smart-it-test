@@ -7,12 +7,16 @@ from openai import OpenAI
 from util_embeddings import EmbeddingsUtil
 
 class QdrantUtil:
-    embedding_model = os.getenv("EMBEDDING_MODEL")
+    embedding_model = os.getenv("EMBEDDING_MODEL") or 'sentence-transformers/all-MiniLM-L6-v2'
+    VS_HOST: str = os.getenv('VS_SERVICE_HOST') or 'localhost'
+    VS_PORT: str = os.getenv('VS_SERVICE_PORT') or 6333
+    VS_COLLECTION = os.getenv('VS_COLLECTION') or 'opschat_data'
 
     def __init__(self):
         # Setup Qdrant
-        qdrant_url = os.getenv('QDRANT_URL')
-        self.client = QdrantClient(url=qdrant_url)
+        #qdrant_url = os.getenv('QDRANT_URL')
+        #self.client = QdrantClient(url=qdrant_url)
+        self.client = QdrantClient(host=self.VS_HOST, port=self.VS_PORT)
 
         # Setup embeddings
         self.embeddings_util = EmbeddingsUtil(self.embedding_model)
@@ -153,7 +157,7 @@ class QdrantUtil:
     
 
     def __getKeyValue(self, intent):
-        if intent is not None:
+        if intent:
             items = intent.items()
             for key, value in items:
                 return str(key), str(value)
