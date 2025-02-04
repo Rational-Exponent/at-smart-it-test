@@ -17,9 +17,9 @@ class LLMClientBedrock(LLMClient):
     def __init__(self, data_model: DataModel=None, session: Session=None):
         super().__init__(data_model, session)
         aws_session = boto3.Session(
-            aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-            aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-            aws_session_token=os.getenv('AWS_SESSION_TOKEN'),
+            #aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+            #aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+            #aws_session_token=os.getenv('AWS_SESSION_TOKEN'),
             region_name=os.getenv('AWS_REGION')
         )
         self.client = aws_session.client('bedrock-runtime')
